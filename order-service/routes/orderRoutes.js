@@ -5,6 +5,7 @@ const validate = require("../middleware/validate");
 const {
   createOrder,
   getOrdersByUser,
+  getAllOrdersAdmin,
   getOrderById,
   markOrderPaid,
   updateOrderStatus,
@@ -44,6 +45,14 @@ const getOrdersQueryValidation = [
 
 router.get("/internal/:id", [param("id").isMongoId()], validate, getOrderById);
 router.patch("/internal/:id/pay", [param("id").isMongoId()], validate, markOrderPaid);
+router.get(
+  "/admin/all",
+  auth,
+  getOrdersQueryValidation,
+  validate,
+  (req, res, next) => (req.user.role === "admin" ? next() : res.status(403).json({ message: "Admin only" })),
+  getAllOrdersAdmin
+);
 router.patch(
   "/:id/status",
   auth,

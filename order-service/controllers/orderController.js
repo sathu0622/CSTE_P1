@@ -110,6 +110,35 @@ const getOrdersByUser = async (req, res) => {
   });
 };
 
+const getAllOrdersAdmin = async (req, res) => {
+  const { status, page = 1, limit = 20, includeMeta = "false" } = req.query;
+  const filters = {};
+  if (status) filters.status = status;
+
+  const currentPage = Number(page);
+  const currentLimit = Number(limit);
+  const skip = (currentPage - 1) * currentLimit;
+
+  const [orders, totalItems] = await Promise.all([
+    Order.find(filters).sort({ createdAt: -1 }).skip(skip).limit(currentLimit),
+    Order.countDocuments(filters)
+  ]);
+
+  if (includeMeta !== "true") {
+    return res.json(orders);
+  }
+
+  return res.json({
+    items: orders,
+    pagination: {
+      page: currentPage,
+      limit: currentLimit,
+      totalItems,
+      totalPages: Math.ceil(totalItems / currentLimit)
+    }
+  });
+};
+
 const getOrderById = async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: "Order not found" });
@@ -176,4 +205,4 @@ const cancelOrder = async (req, res) => {
   return res.json(order);
 };
 
-module.exports = { createOrder, getOrdersByUser, getOrderById, markOrderPaid, updateOrderStatus, cancelOrder };
+module.exports = { createOrder, getOrdersByUser, getAllOrdersAdmin, getOrderById, markOrderPaid, updateOrderStatus, cancelOrder };
