@@ -28,11 +28,11 @@ jobs:
           node-version: "18"
 
       - name: Install dependencies
-        working-directory: ecommerce-microservices/${{ matrix.service }}
+        working-directory: ${{ matrix.service }}
         run: npm install
 
       - name: Run lint
-        working-directory: ecommerce-microservices/${{ matrix.service }}
+        working-directory: ${{ matrix.service }}
         run: npm run lint
 
       - name: Debug Snyk token presence (safe)
@@ -45,7 +45,7 @@ jobs:
 
       - name: Snyk SAST and dependency scan
         if: ${{ env.SNYK_TOKEN != '' }}
-        working-directory: ecommerce-microservices/${{ matrix.service }}
+        working-directory: ${{ matrix.service }}
         run: |
           npm install -g snyk
           snyk auth $SNYK_TOKEN
@@ -65,7 +65,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ecommerce-microservices/${{ matrix.service }}
+          context: ${{ matrix.service }}
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/ecommerce-${{ matrix.service }}:${{ github.sha }}
