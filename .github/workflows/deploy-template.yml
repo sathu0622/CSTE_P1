@@ -1,0 +1,48 @@
+name: CD Deploy Template
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Target cloud provider"
+        required: true
+        default: "azure"
+        type: choice
+        options:
+          - azure
+          - aws
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Print selected deployment target
+        run: |
+          echo "Provider: ${{ inputs.provider }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Use GHCR images published by CI workflow."
+
+      - name: Azure deployment placeholder (Container Apps)
+        if: ${{ inputs.provider == 'azure' }}
+        run: |
+          echo "Configure these secrets before enabling real deploy:"
+          echo "AZURE_CREDENTIALS, AZURE_RESOURCE_GROUP, AZURE_CONTAINERAPPS_ENV"
+          echo "Then deploy each service image from GHCR to Azure Container Apps."
+
+      - name: AWS deployment placeholder (ECS)
+        if: ${{ inputs.provider == 'aws' }}
+        run: |
+          echo "Configure these secrets before enabling real deploy:"
+          echo "AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION"
+          echo "Then update ECS task definitions and services with GHCR/ECR images."

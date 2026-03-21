@@ -1,0 +1,82 @@
+version: "3.9"
+
+services:
+  user-mongo:
+    image: mongo:7
+    container_name: user-mongo
+    restart: unless-stopped
+    volumes:
+      - user-mongo-data:/data/db
+
+  product-mongo:
+    image: mongo:7
+    container_name: product-mongo
+    restart: unless-stopped
+    volumes:
+      - product-mongo-data:/data/db
+
+  order-mongo:
+    image: mongo:7
+    container_name: order-mongo
+    restart: unless-stopped
+    volumes:
+      - order-mongo-data:/data/db
+
+  payment-mongo:
+    image: mongo:7
+    container_name: payment-mongo
+    restart: unless-stopped
+    volumes:
+      - payment-mongo-data:/data/db
+
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    restart: unless-stopped
+    env_file:
+      - ./user-service/.env
+    depends_on:
+      - user-mongo
+    ports:
+      - "4001:4001"
+
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    restart: unless-stopped
+    env_file:
+      - ./product-service/.env
+    depends_on:
+      - product-mongo
+    ports:
+      - "4002:4002"
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    restart: unless-stopped
+    env_file:
+      - ./order-service/.env
+    depends_on:
+      - order-mongo
+      - product-service
+    ports:
+      - "4003:4003"
+
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    restart: unless-stopped
+    env_file:
+      - ./payment-service/.env
+    depends_on:
+      - payment-mongo
+      - order-service
+    ports:
+      - "4004:4004"
+
+volumes:
+  user-mongo-data:
+  product-mongo-data:
+  order-mongo-data:
+  payment-mongo-data:
