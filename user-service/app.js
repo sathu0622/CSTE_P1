@@ -34,7 +34,7 @@ app.use((err, req, res, next) => {
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => console.log(`User service running on port ${PORT}`));
+    app.listen(PORT, "0.0.0.0", () => console.log(`User service running on port ${PORT}`));
   })
   .catch((error) => {
     console.error("User service startup failed", error);

@@ -1,6 +1,7 @@
 # Azure UI Deployment Guide (No AWS, No CLI)
 
 This guide shows how to deploy your 4 microservices using **Azure Portal UI** with **Azure Container Apps**.
+Repository: [sathu0622/CSTE_P1](https://github.com/sathu0622/CSTE_P1)
 
 ## 0) What you already have
 
@@ -8,6 +9,22 @@ This guide shows how to deploy your 4 microservices using **Azure Portal UI** wi
 - Docker installed locally
 - MongoDB Atlas cluster ready
 - CI workflow that builds images to GHCR
+
+If your local stack is already working with Docker, skip directly to section **2**.
+
+## 0.1 Quick local check (optional)
+
+From repo root, this confirms containers run before cloud deployment:
+
+```bash
+docker compose up --build
+```
+
+Health checks:
+- `http://localhost:4001/health`
+- `http://localhost:4002/health`
+- `http://localhost:4003/health`
+- `http://localhost:4004/health`
 
 ## 1) Set GitHub secret for Snyk (without `gh` command)
 
@@ -32,6 +49,16 @@ Your terminal error happened because GitHub CLI (`gh`) is not installed. Use Git
    - `ecommerce-payment-service`
 
 If package visibility is private, keep a GitHub PAT with `read:packages`.
+
+### 2.1 If Snyk token fails with 401
+
+If CI shows `Authentication error (SNYK-0005)`:
+
+1. Regenerate token in Snyk dashboard
+2. Update GitHub secret `SNYK_TOKEN`
+3. Re-run CI
+
+This is token/auth issue only; not a Docker or Azure issue.
 
 ## 3) Create Azure resources in Portal
 
@@ -77,7 +104,7 @@ Create 4 container apps one by one.
   - `ghcr.io/<your-github-owner>/ecommerce-payment-service:latest`
 - Registry authentication:
   - Username: GitHub username
-  - Password/secret: GitHub PAT with `read:packages`
+  - Password/secret: GitHub PAT with `read:packages` (and `repo` scope if package visibility needs it)
 
 ### App-specific ports
 
@@ -153,6 +180,8 @@ After all 4 apps are created:
    - `payment-service.ORDER_SERVICE_URL = <order app url>`
 3. Save and restart/redeploy revisions if prompted
 
+Tip: after each env update, wait until the new revision is healthy before testing.
+
 ## 7) Verify deployment
 
 Open these URLs:
@@ -186,3 +215,5 @@ Swagger:
 - `500 DB errors`: check MongoDB Atlas IP/network access and URI format.
 - `Image pull failed`: verify GHCR credentials and package visibility.
 - `Snyk step skipped`: confirm `SNYK_TOKEN` is set in GitHub repo secrets.
+- `Container app revision failed`: verify correct `PORT` and target port mapping (4001/4002/4003/4004).
+- `Inter-service call timeout`: verify app URLs in env vars and ensure ingress is enabled.
