@@ -1,8 +1,62 @@
 const Product = require("../models/Product");
 
 const getProducts = async (req, res) => {
-  const products = await Product.find().sort({ createdAt: -1 });
-  return res.json(products);
+  const {
+    search,
+    category,
+    minPrice,
+    maxPrice,
+    sort = "latest",
+    page = 1,
+    limit = 20,
+    includeMeta = "false"
+  } = req.query;
+
+  const filters = {};
+  if (search) {
+    filters.$text = { $search: search };
+  }
+  if (category) {
+    filters.category = category.toLowerCase();
+  }
+
+  if (minPrice || maxPrice) {
+    filters.price = {};
+    if (minPrice) filters.price.$gte = Number(minPrice);
+    if (maxPrice) filters.price.$lte = Number(maxPrice);
+  }
+
+  const sortMap = {
+    latest: { createdAt: -1 },
+    price_asc: { price: 1 },
+    price_desc: { price: -1 },
+    name_asc: { name: 1 },
+    name_desc: { name: -1 }
+  };
+
+  const currentPage = Number(page);
+  const currentLimit = Number(limit);
+  const skip = (currentPage - 1) * currentLimit;
+
+  const [products, totalItems] = await Promise.all([
+    Product.find(filters).sort(sortMap[sort] || sortMap.latest).skip(skip).limit(currentLimit),
+    Product.countDocuments(filters)
+  ]);
+
+  // Backward-compatible default response for existing clients.
+  if (includeMeta !== "true") {
+    return res.json(products);
+  }
+
+  return res.json({
+    items: products,
+    pagination: {
+      page: currentPage,
+      limit: currentLimit,
+      totalItems,
+      totalPages: Math.ceil(totalItems / currentLimit)
+    }
+  });
 };
 
 const getProductById = async (req, res) => {
@@ -28,4 +82,29 @@ const deleteProduct = async (req, res) => {
   return res.json({ message: "Product deleted" });
 };
 
-module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct };
+const decrementStockInternal = async (req, res) => {
+  const { items } = req.body;
+  const decremented = [];
+
+  for (const item of items) {
+    const updated = await Product.findOneAndUpdate(
+      { _id: item.productId, stock: { $gte: item.quantity } },
+      { $inc: { stock: -item.quantity } },
+      { new: true }
+    );
+
+    if (!updated) {
+      // Compensate already-decremented items in this request.
+      for (const done of decremented) {
+        await Product.findByIdAndUpdate(done.productId, { $inc: { stock: done.quantity } });
+      }
+      return res.status(400).json({ message: `Insufficient stock for product ${item.productId}` });
+    }
+
+    decremented.push({ productId: item.productId, quantity: item.quantity });
+  }
+
+  return res.json({ message: "Stock decremented", items: decremented });
+};
+
+module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct, decrementStockInternal };

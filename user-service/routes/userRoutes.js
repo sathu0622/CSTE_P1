@@ -1,6 +1,17 @@
 const express = require("express");
 const { body } = require("express-validator");
-const { register, login, profile, getUserByIdForInternal } = require("../controllers/userController");
+const {
+  register,
+  login,
+  profile,
+  updateProfile,
+  requestEmailVerification,
+  verifyEmail,
+  requestPasswordReset,
+  resetPassword,
+  getActivity,
+  getUserByIdForInternal
+} = require("../controllers/userController");
 const { protect } = require("../middleware/auth");
 const serviceAuth = require("../middleware/serviceAuth");
 const validate = require("../middleware/validate");
@@ -53,6 +64,23 @@ router.post(
  *     summary: Get logged in user's profile
  */
 router.get("/profile", protect, profile);
+router.put(
+  "/profile",
+  protect,
+  [body("name").optional().isString(), body("profile.phone").optional().isString(), body("profile.address").optional().isString(), body("profile.avatar").optional().isURL()],
+  validate,
+  updateProfile
+);
+router.get("/activity", protect, getActivity);
+router.post("/verify-email/request", [body("email").isEmail()], validate, requestEmailVerification);
+router.post("/verify-email/confirm", [body("email").isEmail(), body("token").isString().notEmpty()], validate, verifyEmail);
+router.post("/password-reset/request", [body("email").isEmail()], validate, requestPasswordReset);
+router.post(
+  "/password-reset/confirm",
+  [body("email").isEmail(), body("token").isString().notEmpty(), body("newPassword").isLength({ min: 8 })],
+  validate,
+  resetPassword
+);
 router.get("/internal/:id", serviceAuth, getUserByIdForInternal);
 
 module.exports = router;

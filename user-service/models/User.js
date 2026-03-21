@@ -22,6 +22,25 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["admin", "user"],
       default: "user"
+    },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, default: null },
+    passwordResetToken: { type: String, default: null },
+    passwordResetExpiresAt: { type: Date, default: null },
+    profile: {
+      phone: { type: String, default: "" },
+      address: { type: String, default: "" },
+      avatar: { type: String, default: "" }
+    },
+    activityLogs: {
+      type: [
+        {
+          action: { type: String, required: true },
+          at: { type: Date, default: Date.now },
+          meta: { type: String, default: "" }
+        }
+      ],
+      default: []
     }
   },
   { timestamps: true }
