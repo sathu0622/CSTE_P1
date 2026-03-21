@@ -31,7 +31,7 @@ const orderSchema = new mongoose.Schema(
       ],
       default: []
     },
-    idempotencyKey: { type: String, default: null },
+    idempotencyKey: { type: String },
     refundStatus: {
       type: String,
       enum: ["none", "requested", "partial_refunded", "refunded"],

@@ -44,14 +44,18 @@ const createOrder = async (req, res) => {
       totalAmount += product.price * item.quantity;
     }
 
-    const order = await Order.create({
+    const orderPayload = {
       userId,
       items: validatedItems,
       totalAmount,
       status: "pending",
-      idempotencyKey,
       statusHistory: [{ status: "pending", changedBy: userId, note: "Order created" }]
-    });
+    };
+    if (idempotencyKey) {
+      orderPayload.idempotencyKey = idempotencyKey;
+    }
+
+    const order = await Order.create(orderPayload);
 
     // Reserve/reduce stock in product service after order creation.
     try {
