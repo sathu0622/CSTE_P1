@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
-const crypto = require("crypto");
+const nodeCrypto = require("crypto");
 const User = require("../models/User");
 const orderServiceBaseUrl = process.env.ORDER_SERVICE_URL || "http://order-service:4003";
 
@@ -20,7 +20,7 @@ const register = async (req, res) => {
     return res.status(409).json({ message: "Email already registered" });
   }
 
-  const verificationToken = crypto.randomBytes(20).toString("hex");
+  const verificationToken = nodeCrypto.randomBytes(20).toString("hex");
   const hashedPassword = await bcrypt.hash(password, 12);
   const user = await User.create({
     name,
@@ -129,7 +129,7 @@ const requestEmailVerification = async (req, res) => {
   if (!user) return res.status(404).json({ message: "User not found" });
   if (user.emailVerified) return res.json({ message: "Email already verified" });
 
-  const token = crypto.randomBytes(20).toString("hex");
+  const token = nodeCrypto.randomBytes(20).toString("hex");
   user.emailVerificationToken = token;
   user.activityLogs.push({ action: "verification_requested", meta: "Email verification requested" });
   await user.save();
@@ -157,7 +157,7 @@ const requestPasswordReset = async (req, res) => {
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  const token = crypto.randomBytes(20).toString("hex");
+  const token = nodeCrypto.randomBytes(20).toString("hex");
   user.passwordResetToken = token;
   user.passwordResetExpiresAt = new Date(Date.now() + 1000 * 60 * 30);
   user.activityLogs.push({ action: "password_reset_requested", meta: "Password reset requested" });
