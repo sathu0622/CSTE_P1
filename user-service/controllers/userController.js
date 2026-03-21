@@ -12,6 +12,12 @@ const createToken = (user) =>
     { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
   );
 
+const resolveUserId = (req) =>
+  req.user?.id ||
+  req.query?.userId ||
+  req.body?.userId ||
+  req.headers["x-user-id"];
+
 const register = async (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -74,14 +80,19 @@ const login = async (req, res) => {
 };
 
 const profile = async (req, res) => {
-  const user = await User.findById(req.user.id).select("-password");
+  const resolvedUserId = resolveUserId(req);
+  if (!resolvedUserId) {
+    return res.status(400).json({ message: "userId is required when authorization is not provided" });
+  }
+
+  const user = await User.findById(resolvedUserId).select("-password");
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
 
   let orderSummary = { integrated: false, count: 0 };
   try {
-    const response = await axios.get(`${orderServiceBaseUrl}/api/orders/${req.user.id}`, {
+    const response = await axios.get(`${orderServiceBaseUrl}/api/orders/${resolvedUserId}`, {
       headers: {
         Authorization: req.headers.authorization || ""
       },
@@ -184,7 +195,12 @@ const resetPassword = async (req, res) => {
 };
 
 const getActivity = async (req, res) => {
-  const user = await User.findById(req.user.id).select("activityLogs");
+  const resolvedUserId = resolveUserId(req);
+  if (!resolvedUserId) {
+    return res.status(400).json({ message: "userId is required when authorization is not provided" });
+  }
+
+  const user = await User.findById(resolvedUserId).select("activityLogs");
   if (!user) return res.status(404).json({ message: "User not found" });
   return res.json(user.activityLogs.slice(-50).reverse());
 };

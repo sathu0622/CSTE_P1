@@ -63,7 +63,7 @@ router.post(
  *       - bearerAuth: []
  *     summary: Get logged in user's profile
  */
-router.get("/profile", protect, profile);
+router.get("/profile", profile);
 router.put(
   "/profile",
   protect,
@@ -71,7 +71,7 @@ router.put(
   validate,
   updateProfile
 );
-router.get("/activity", protect, getActivity);
+router.get("/activity", getActivity);
 router.post("/verify-email/request", [body("email").isEmail()], validate, requestEmailVerification);
 router.post("/verify-email/confirm", [body("email").isEmail(), body("token").isString().notEmpty()], validate, verifyEmail);
 router.post("/password-reset/request", [body("email").isEmail()], validate, requestPasswordReset);
