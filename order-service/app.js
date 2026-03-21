@@ -11,6 +11,9 @@ const orderRoutes = require("./routes/orderRoutes");
 const app = express();
 const PORT = process.env.PORT || 4003;
 
+// Required behind reverse proxies (e.g., Azure Container Apps) so rate-limit can read client IP safely.
+app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS || 1));
+
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 app.use(express.json({ limit: "1mb" }));
