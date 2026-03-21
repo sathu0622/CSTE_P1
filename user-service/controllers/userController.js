@@ -79,7 +79,7 @@ const profile = async (req, res) => {
       integrated: true,
       count: Array.isArray(response.data) ? response.data.length : 0
     };
-  } catch (error) {
+  } catch {
     orderSummary = { integrated: false, count: 0 };
   }
 

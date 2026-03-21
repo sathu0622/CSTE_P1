@@ -20,7 +20,8 @@ app.get("/health", (req, res) => res.json({ status: "ok", service: "product-serv
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/products", productRoutes);
 
-app.use((err, req, res, _next) => {
+app.use((err, req, res, next) => {
+  void next;
   console.error(err);
   return res.status(500).json({ message: "Internal server error" });
 });
