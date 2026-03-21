@@ -150,9 +150,6 @@ In each Container App:
 - `MONGO_URI=<atlas orderdb uri>`
 - `JWT_SECRET=<same jwt secret>`
 - `PRODUCT_SERVICE_URL=<set after product service URL is known>`
-- `TEAMMATE_SERVICE_URL=<teammate service URL for demo>`
-- `TEAMMATE_INTEGRATION_PATH=/api/integrations/order-created`
-- `TEAMMATE_SERVICE_TIMEOUT_MS=5000`
 - `SERVICE_SHARED_SECRET=<same shared secret>`
 - `CORS_ORIGIN=*`
 - `RATE_LIMIT_MAX=200`
@@ -204,9 +201,6 @@ Swagger:
 2. Create admin product (`product-service`) with admin token
 3. Create order (`order-service`) -> shows cross-service validation
 4. Trigger payment (`payment-service`) -> updates order status
-5. Show teammate integration fields in order response:
-   - `integrationDemo.teammateServiceNotified`
-   - `integrationDemo.teammateServiceResponse`
 
 ## 9) Troubleshooting
 

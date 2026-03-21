@@ -2,42 +2,6 @@ const axios = require("axios");
 const Order = require("../models/Order");
 
 const productServiceBaseUrl = process.env.PRODUCT_SERVICE_URL || "http://product-service:4002";
-const teammateServiceBaseUrl = process.env.TEAMMATE_SERVICE_URL;
-const teammateIntegrationPath = process.env.TEAMMATE_INTEGRATION_PATH || "/api/integrations/order-created";
-
-const notifyTeammateService = async (orderPayload) => {
-  if (!teammateServiceBaseUrl) {
-    return {
-      teammateServiceNotified: false,
-      teammateServiceResponse: "TEAMMATE_SERVICE_URL not configured"
-    };
-  }
-
-  try {
-    const response = await axios.post(
-      `${teammateServiceBaseUrl}${teammateIntegrationPath}`,
-      orderPayload,
-      {
-        timeout: Number(process.env.TEAMMATE_SERVICE_TIMEOUT_MS || 5000),
-        headers: {
-          "Content-Type": "application/json",
-          "x-integration-source": "order-service"
-        }
-      }
-    );
-
-    return {
-      teammateServiceNotified: true,
-      teammateServiceResponse: `success:${response.status}`
-    };
-  } catch (error) {
-    const status = error.response?.status || "no_response";
-    return {
-      teammateServiceNotified: false,
-      teammateServiceResponse: `failed:${status}`
-    };
-  }
-};
 
 const createOrder = async (req, res) => {
   const { items } = req.body;
@@ -66,29 +30,10 @@ const createOrder = async (req, res) => {
     userId,
     items: validatedItems,
     totalAmount,
-    status: "pending",
-    integration: {
-      teammateServiceNotified: false,
-      teammateServiceResponse: "not_attempted"
-    }
+    status: "pending"
   });
 
-  const integrationResult = await notifyTeammateService({
-    orderId: order._id.toString(),
-    userId: order.userId,
-    totalAmount: order.totalAmount,
-    itemCount: order.items.length,
-    status: order.status,
-    createdAt: order.createdAt
-  });
-
-  order.integration = integrationResult;
-  await order.save();
-
-  return res.status(201).json({
-    ...order.toObject(),
-    integrationDemo: integrationResult
-  });
+  return res.status(201).json(order);
 };
 
 const getOrdersByUser = async (req, res) => {

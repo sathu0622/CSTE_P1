@@ -14,11 +14,7 @@ const orderSchema = new mongoose.Schema(
     userId: { type: String, required: true, index: true },
     items: { type: [orderItemSchema], required: true },
     totalAmount: { type: Number, required: true, min: 0 },
-    status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
-    integration: {
-      teammateServiceNotified: { type: Boolean, default: false },
-      teammateServiceResponse: { type: String, default: "not_attempted" }
-    }
+    status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" }
   },
   { timestamps: true }
 );
