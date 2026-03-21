@@ -9,6 +9,8 @@ on:
 jobs:
   build-lint-sast-and-push:
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     permissions:
       contents: read
       packages: write
@@ -35,18 +37,24 @@ jobs:
         working-directory: ecommerce-microservices/${{ matrix.service }}
         run: npm run lint
 
+      - name: Debug Snyk token presence (safe)
+        run: |
+          if [ -n "$SNYK_TOKEN" ]; then
+            echo "SNYK token present: yes"
+          else
+            echo "SNYK token present: no"
+          fi
+
       - name: Snyk SAST and dependency scan
-        if: ${{ secrets.SNYK_TOKEN != '' }}
+        if: ${{ env.SNYK_TOKEN != '' }}
         working-directory: ecommerce-microservices/${{ matrix.service }}
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           npm install -g snyk
           snyk auth $SNYK_TOKEN
           snyk test --severity-threshold=high
 
       - name: Skip Snyk when token missing
-        if: ${{ secrets.SNYK_TOKEN == '' }}
+        if: ${{ env.SNYK_TOKEN == '' }}
         run: echo "SNYK_TOKEN not configured. Add it in repository secrets to enable DevSecOps scanning."
 
       - name: Login to GHCR
