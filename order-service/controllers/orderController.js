@@ -13,66 +13,82 @@ const allowedStatusTransitions = {
 };
 
 const createOrder = async (req, res) => {
-  const { items } = req.body;
-  const userId = req.user.id;
-  const idempotencyKey = req.headers["x-idempotency-key"] || req.body.idempotencyKey || null;
-
-  if (idempotencyKey) {
-    const existing = await Order.findOne({ userId, idempotencyKey });
-    if (existing) {
-      return res.status(200).json(existing);
-    }
-  }
-
-  let totalAmount = 0;
-  const validatedItems = [];
-
-  for (const item of items) {
-    const response = await axios.get(`${productServiceBaseUrl}/api/products/${item.productId}`);
-    const product = response.data;
-
-    if (product.stock < item.quantity) {
-      return res.status(400).json({ message: `Insufficient stock for product ${item.productId}` });
-    }
-
-    validatedItems.push({
-      productId: item.productId,
-      quantity: item.quantity,
-      price: product.price
-    });
-    totalAmount += product.price * item.quantity;
-  }
-
-  const order = await Order.create({
-    userId,
-    items: validatedItems,
-    totalAmount,
-    status: "pending",
-    idempotencyKey,
-    statusHistory: [{ status: "pending", changedBy: userId, note: "Order created" }]
-  });
-
-  // Reserve/reduce stock in product service after order creation.
   try {
-    await axios.post(
-      `${productServiceBaseUrl}/api/products/internal/decrement-stock`,
-      { items: validatedItems.map((item) => ({ productId: item.productId, quantity: item.quantity })) },
-      { headers: { "x-service-secret": process.env.SERVICE_SHARED_SECRET || "" } }
-    );
-  } catch (error) {
-    order.status = "failed";
-    order.statusHistory.push({
-      status: "failed",
-      changedBy: "system",
-      note: "Stock reservation failed"
-    });
-    await order.save();
-    return res.status(400).json({
-      message: error?.response?.data?.message || "Unable to reserve stock"
-    });
-  }
+    const { items } = req.body;
+    const userId = req.user.id;
+    const idempotencyKey = req.headers["x-idempotency-key"] || req.body.idempotencyKey || null;
 
-  return res.status(201).json(order);
+    if (idempotencyKey) {
+      const existing = await Order.findOne({ userId, idempotencyKey });
+      if (existing) {
+        return res.status(200).json(existing);
+      }
+    }
+
+    let totalAmount = 0;
+    const validatedItems = [];
+
+    for (const item of items) {
+      const response = await axios.get(`${productServiceBaseUrl}/api/products/${item.productId}`);
+      const product = response.data;
+
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ message: `Insufficient stock for product ${item.productId}` });
+      }
+
+      validatedItems.push({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: product.price
+      });
+      totalAmount += product.price * item.quantity;
+    }
+
+    const order = await Order.create({
+      userId,
+      items: validatedItems,
+      totalAmount,
+      status: "pending",
+      idempotencyKey,
+      statusHistory: [{ status: "pending", changedBy: userId, note: "Order created" }]
+    });
+
+    // Reserve/reduce stock in product service after order creation.
+    try {
+      await axios.post(
+        `${productServiceBaseUrl}/api/products/internal/decrement-stock`,
+        { items: validatedItems.map((item) => ({ productId: item.productId, quantity: item.quantity })) },
+        { headers: { "x-service-secret": process.env.SERVICE_SHARED_SECRET || "" } }
+      );
+    } catch (error) {
+      order.status = "failed";
+      order.statusHistory.push({
+        status: "failed",
+        changedBy: "system",
+        note: "Stock reservation failed"
+      });
+      await order.save();
+
+      const upstreamStatus = error?.response?.status;
+      if (upstreamStatus === 401 || upstreamStatus === 403) {
+        return res.status(503).json({ message: "Inventory service authorization failed" });
+      }
+      if (upstreamStatus && upstreamStatus >= 500) {
+        return res.status(503).json({ message: "Inventory service unavailable" });
+      }
+
+      return res.status(400).json({
+        message: error?.response?.data?.message || "Unable to reserve stock"
+      });
+    }
+
+    return res.status(201).json(order);
+  } catch (error) {
+    if (error?.response?.status >= 500) {
+      return res.status(503).json({ message: "Product service unavailable" });
+    }
+    return res.status(500).json({ message: "Unable to create order" });
+  }
 };
 
 const getOrdersByUser = async (req, res) => {
