@@ -47,6 +47,12 @@ const productQueryValidation = [
  *   get:
  *     tags: [Products]
  *     summary: Get all products
+ *   post:
+ *     tags: [Products]
+ *     summary: Create product (admin)
+ *     description: Requires Bearer JWT. Role is validated against user-service (not the JWT payload alone).
+ *     security:
+ *       - bearerAuth: []
  */
 router.get("/", productQueryValidation, validate, getProducts);
 router.post(
@@ -57,6 +63,35 @@ router.post(
   decrementStockInternal
 );
 router.get("/:id", [param("id").isMongoId()], validate, getProductById);
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   put:
+ *     tags: [Products]
+ *     summary: Update product (admin)
+ *     description: Requires Bearer JWT. Role is validated against user-service.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *   delete:
+ *     tags: [Products]
+ *     summary: Delete product (admin)
+ *     description: Requires Bearer JWT. Role is validated against user-service.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ */
 router.post("/", protect, authorize("admin"), productValidation, validate, createProduct);
 router.put("/:id", protect, authorize("admin"), [param("id").isMongoId(), ...productValidation], validate, updateProduct);
 router.delete("/:id", protect, authorize("admin"), [param("id").isMongoId()], validate, deleteProduct);

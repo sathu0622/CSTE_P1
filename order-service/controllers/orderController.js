@@ -88,8 +88,26 @@ const createOrder = async (req, res) => {
 
     return res.status(201).json(order);
   } catch (error) {
+    console.error("createOrder:", error?.message, error?.code, error?.response?.status);
     if (error?.response?.status >= 500) {
       return res.status(503).json({ message: "Product service unavailable" });
+    }
+    if (error?.response?.status === 404) {
+      return res.status(404).json({
+        message: "Product not found in product service",
+        detail: error?.response?.data
+      });
+    }
+    if (error?.code === "ECONNREFUSED" || error?.code === "ENOTFOUND" || error?.code === "ETIMEDOUT") {
+      return res.status(503).json({
+        message: "Cannot reach product service — set PRODUCT_SERVICE_URL to your deployed product-service base URL (HTTPS)."
+      });
+    }
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        message:
+          "Duplicate key (order idempotency). If you are not reusing x-idempotency-key, drop the legacy MongoDB index userId_1_idempotencyKey_1 and restart the app so the new partial index can be created."
+      });
     }
     return res.status(500).json({ message: "Unable to create order" });
   }
