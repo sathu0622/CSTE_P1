@@ -41,16 +41,4 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Uniqueness only when idempotencyKey is set (non-empty). Multiple orders per user without a key are allowed.
-// If upgrading from the old index, run: db.orders.dropIndex("userId_1_idempotencyKey_1")
-orderSchema.index(
-  { userId: 1, idempotencyKey: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      idempotencyKey: { $exists: true, $type: "string", $ne: "" }
-    }
-  }
-);
-
 module.exports = mongoose.model("Order", orderSchema);

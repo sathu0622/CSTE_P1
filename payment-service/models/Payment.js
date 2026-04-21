@@ -10,7 +10,7 @@ const paymentSchema = new mongoose.Schema(
     refundedAmount: { type: Number, min: 0, default: 0 },
     retries: { type: Number, min: 0, default: 0 },
     gatewayReference: { type: String, default: "" },
-    idempotencyKey: { type: String, default: null, unique: true, sparse: true }
+    idempotencyKey: { type: String, default: null }
   },
   { timestamps: true }
 );
