@@ -1,32 +1,90 @@
-name: CD Deploy Template
+name: CD Deploy
 
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: ["main", "master"]
   workflow_dispatch:
     inputs:
-      environment:
-        description: "Deployment environment"
-        required: true
-        default: "dev"
-        type: choice
-        options:
-          - dev
-          - prod
+      image_tag:
+        description: "Image tag to deploy (defaults to latest)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
-  deploy:
+  gate:
     runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
+      image_tag: ${{ steps.check.outputs.image_tag }}
+    steps:
+      - name: Decide deploy trigger and image tag
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              echo "image_tag=latest" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "image_tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${{ github.event.inputs.image_tag || 'latest' }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: gate
+    if: ${{ needs.gate.outputs.proceed == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: user-service
+            app_name_secret: AZURE_CONTAINERAPP_USER
+          - service: product-service
+            app_name_secret: AZURE_CONTAINERAPP_PRODUCT
+          - service: order-service
+            app_name_secret: AZURE_CONTAINERAPP_ORDER
+          - service: payment-service
+            app_name_secret: AZURE_CONTAINERAPP_PAYMENT
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Print selected deployment target
+      - name: Resolve target app name
+        id: app
         run: |
-          echo "Provider: azure"
-          echo "Environment: ${{ inputs.environment }}"
-          echo "Use GHCR images published by CI workflow."
+          case "${{ matrix.service }}" in
+            user-service) echo "name=${{ secrets.AZURE_CONTAINERAPP_USER }}" >> "$GITHUB_OUTPUT" ;;
+            product-service) echo "name=${{ secrets.AZURE_CONTAINERAPP_PRODUCT }}" >> "$GITHUB_OUTPUT" ;;
+            order-service) echo "name=${{ secrets.AZURE_CONTAINERAPP_ORDER }}" >> "$GITHUB_OUTPUT" ;;
+            payment-service) echo "name=${{ secrets.AZURE_CONTAINERAPP_PAYMENT }}" >> "$GITHUB_OUTPUT" ;;
+          esac
 
-      - name: Azure deployment placeholder (Container Apps)
+      - name: Validate required secrets
         run: |
-          echo "Configure these secrets before enabling real deploy:"
-          echo "AZURE_CREDENTIALS, AZURE_RESOURCE_GROUP, AZURE_CONTAINERAPPS_ENV"
-          echo "Then deploy each service image from GHCR to Azure Container Apps."
+          test -n "${{ secrets.AZURE_CREDENTIALS }}"
+          test -n "${{ secrets.AZURE_RESOURCE_GROUP }}"
+          test -n "${{ steps.app.outputs.name }}"
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy ${{ matrix.service }} to Azure Container Apps
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.64.0
+          inlineScript: |
+            az containerapp update \
+              --name "${{ steps.app.outputs.name }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --image "ghcr.io/${{ github.repository_owner }}/ecommerce-${{ matrix.service }}:${{ needs.gate.outputs.image_tag }}"
