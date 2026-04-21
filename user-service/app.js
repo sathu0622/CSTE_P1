@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
 const connectDB = require("./config/db");
 const swaggerSpec = require("./config/swagger");
@@ -17,13 +16,6 @@ app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS || 1));
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 app.use(express.json({ limit: "1mb" }));
-
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: Number(process.env.RATE_LIMIT_MAX || 200)
-  })
-);
 
 app.get("/health", (req, res) => res.json({ status: "ok", service: "user-service" }));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
