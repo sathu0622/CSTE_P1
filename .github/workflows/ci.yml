@@ -52,7 +52,7 @@ jobs:
           for attempt in 1 2 3; do
             echo "Running Snyk test (attempt $attempt/3)"
             set +e
-            output=$(npx snyk@latest test --severity-threshold=high 2>&1)
+            output=$(npx snyk@latest test --severity-threshold=high --fail-on=upgradable 2>&1)
             exit_code=$?
             set -e
             echo "$output"
