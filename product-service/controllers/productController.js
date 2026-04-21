@@ -1,4 +1,36 @@
+const axios = require("axios");
 const Product = require("../models/Product");
+
+const userServiceBaseUrl = process.env.USER_SERVICE_URL || "http://user-service:4001";
+const userServiceTimeoutMs = Number(process.env.USER_SERVICE_TIMEOUT_MS || 5000);
+
+const ensureActorStillExists = async (req, res) => {
+  if (!req.user?.id) {
+    return true;
+  }
+
+  try {
+    await axios.get(`${userServiceBaseUrl}/api/users/internal/${req.user.id}`, {
+      headers: {
+        "x-service-secret": process.env.SERVICE_SHARED_SECRET || ""
+      },
+      timeout: userServiceTimeoutMs
+    });
+    return true;
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status === 404) {
+      res.status(403).json({ message: "Forbidden: user no longer exists" });
+      return false;
+    }
+    if (status === 401 || status === 403) {
+      res.status(503).json({ message: "User service rejected service credentials" });
+      return false;
+    }
+    res.status(503).json({ message: "User service unavailable" });
+    return false;
+  }
+};
 
 const getProducts = async (req, res) => {
   const {
@@ -66,17 +98,26 @@ const getProductById = async (req, res) => {
 };
 
 const createProduct = async (req, res) => {
+  const actorExists = await ensureActorStillExists(req, res);
+  if (!actorExists) return;
+
   const product = await Product.create(req.body);
   return res.status(201).json(product);
 };
 
 const updateProduct = async (req, res) => {
+  const actorExists = await ensureActorStillExists(req, res);
+  if (!actorExists) return;
+
   const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!updated) return res.status(404).json({ message: "Product not found" });
   return res.json(updated);
 };
 
 const deleteProduct = async (req, res) => {
+  const actorExists = await ensureActorStillExists(req, res);
+  if (!actorExists) return;
+
   const deleted = await Product.findByIdAndDelete(req.params.id);
   if (!deleted) return res.status(404).json({ message: "Product not found" });
   return res.json({ message: "Product deleted" });
