@@ -47,9 +47,27 @@ jobs:
         if: ${{ env.SNYK_TOKEN != '' }}
         working-directory: ${{ matrix.service }}
         run: |
-          npm install -g snyk
-          snyk auth $SNYK_TOKEN
-          snyk test --severity-threshold=high
+          set -euo pipefail
+          npx snyk@latest auth "$SNYK_TOKEN"
+          for attempt in 1 2 3; do
+            echo "Running Snyk test (attempt $attempt/3)"
+            set +e
+            output=$(npx snyk@latest test --severity-threshold=high 2>&1)
+            exit_code=$?
+            set -e
+            echo "$output"
+            if [ $exit_code -eq 0 ]; then
+              break
+            fi
+            if echo "$output" | grep -q "SNYK-CLI-0000"; then
+              if [ "$attempt" -lt 3 ]; then
+                echo "Transient Snyk timeout detected. Retrying after 10s..."
+                sleep 10
+                continue
+              fi
+            fi
+            exit $exit_code
+          done
 
       - name: Skip Snyk when token missing
         if: ${{ env.SNYK_TOKEN == '' }}
