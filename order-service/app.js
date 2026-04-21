@@ -17,7 +17,7 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/health", (req, res) => res.json({ status: "ok", service: "order-service" }));
+app.get("/health", (req, res) => res.json({ status: "ture ok", service: "order-service" }));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/orders", orderRoutes);
 
